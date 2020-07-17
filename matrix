@@ -1,0 +1,290 @@
+#!/bin/bash
+#Honghao Li
+#933654887
+
+#--------------------------------------------------------------
+#Checking condition before running the program
+#Check function is for checking if the files exist and readable
+#There are the situation that no argument file and 
+
+files=${@:2}
+#This part for checking the bad command
+if [[ $1 != "add" && $1 != "multiply" && $1 != "dims" && $1 != "mean" && $1 != "transpose" ]]
+then
+	echo 1>&2
+	exit 1
+fi
+#This part for checking the number of argument when running the add and multiply function
+if [[ $1 == "add" || $1 == "multiply" ]]
+then
+	if [[ "$#" -ne 3 ]]
+	then
+		echo 1>&2
+		exit 1
+	fi
+fi
+#The normal checking process
+num_files=$#
+if [[ "$#" -eq 1 ]]				#The conditon that no argument
+then
+	TMP="./tmp$$"				#TMP will content the stdin file until the end of program
+	cat > $TMP
+	if [[ -e $TMP && -r $TMP ]]		#Check the other way of stdin
+	then
+#		echo -e "This can be read.\n"
+		num_head=$(head -n1 $TMP | wc -w)
+		lines=$(wc -l $TMP)
+		
+	else
+		echo "File is not vaild" 1>&2
+		rm -f "./tmp$$"
+		exit 1
+	fi
+else						#The condition that has argument
+	for i in $files
+	do
+		if [[ -e "$i" && -r "$i" ]]
+		then
+#			echo -e "This can be read!\n"
+			num_head=$(head -n1 $i | wc -w)
+			lines=$(wc -l $i)
+		else
+			echo "File is not vaild" 1>&2
+			exit 1
+		fi
+	done
+fi
+
+#The Functions below!!!
+#------------------------------------------------------------------------
+#This function is dims function that calculate the matrix's rows and cols
+
+dims(){
+if [[ "$#" -eq 1 ]] 
+then
+	num_row=$(cat $1 | wc -l)
+	num_col=$(head -n1 $1 | wc -w)
+elif [[ "$#" -eq 0 ]]
+then
+	num_row=$(cat $TMP | wc -l)
+	num_col=$(cat $TMP | head -n1 | wc -w)
+else
+	echo "Bad input" 1>&2
+	exit 1
+fi
+echo "$num_row $num_col"
+}
+
+#------------------------------------------------------------------------
+#This function is transpose function that transfor row to col and col to row
+
+transpose(){
+if [[ "$#" -eq 1 ]]
+then
+	num_col=$(head -n1 $1 | wc -w)
+	for((i=1; i <= $num_col; i++))
+	do
+		cut -f$i $1 | paste -s >> "./output"
+	done
+	cat "./output"
+elif [[ "$#" -eq 0 ]]
+then
+	num_col=$(head -n1 $TMP | wc -w)
+	for (( i=1; i <= $num_col; i++ ))
+	do
+		cut -f$i $TMP | paste -s >> "./output"
+	done
+	cat "./output"
+else
+	echo "Bad input" 1>&2
+	exit 1
+fi
+}
+
+#------------------------------------------------------------------------
+#This function is mean function that calculate the mean of each columns numbers
+
+mean(){
+if [[ "$#" -eq 1 ]]							#When arguments is one
+then
+	num_row=$(cat $1 | wc -l)
+	num_col=$(head -n1 $1 | wc -w)
+	num=1
+	for (( i=1; i <= $num_col; i++ ))
+	do
+		sum=0
+		for (( j=1; j <= $num_row; j++))
+		do
+			line=$(head -n$j $1 | tail -1)
+			num=0
+			for z in $line
+			do
+				val=$z
+				((num++))
+				if [[ $num -eq $i ]]
+				then
+					num=0
+					break
+				fi
+			done
+			sum=$(expr $sum + $val)
+		done
+		count=$(( ($sum + ($num_row/2) * ( ($sum>0)*2-1 )) / $num_row ))
+		num=$(expr $num + 2)
+		if [[ $i -ne $num_col ]]
+		then
+			echo -ne "$count\t"
+		else
+			echo -e "$count"
+		fi
+	done
+elif [[ "$#" -eq 0 ]]							#When argument is 0
+then
+	num_row=$(cat $TMP | wc -l)
+	num_col=$(head -n1 $TMP | wc -w)
+	num=1
+	for (( i=1; i <= $num_col; i++ ))
+	do
+		sum=0
+		for (( j=1; j <= $num_row; j++))
+		do
+			line=$(head -n$j $1 | tail -1)
+			num=0
+			for z in $line
+			do
+				val=$z
+				((num++))
+				if [[ $num -eq $i ]]
+				then
+					num=0
+					break
+				fi
+			done
+			sum=$(expr $sum + $val)
+		done
+		count=$(( ($sum + ($num_row/2) * ( ($sum>0)*2-1 )) / $num_row ))
+		num=$(expr $num + 2)
+		if [[ $i -ne $num_col ]]
+		then
+			echo -ne "$count\t"				#this for print privious numbers with tab
+		else
+			echo -e "$count"				#this for printing last number with \n
+		fi
+	done
+else
+	echo "Bad input" 1>&2
+	exit 1
+fi
+}
+
+#------------------------------------------------------------------------
+#The add function is for add two same formal matrix into a sum matrix
+
+add(){
+num_row_1=$(cat $1 | wc -l)
+num_col_1=$(head -n1 $1 | wc -w)
+num_row_2=$(cat $2 | wc -l)
+num_col_2=$(head -n1 $2 | wc -w)
+#check if there is 2 argument of file!!!!
+if [[ $num_row_1 -eq $num_row_2 && $num_col_1 -eq $num_col_2 ]]
+then
+	for (( i=1; i <= $num_row_1; i++ ))
+	do
+		index=1
+		for (( j=1; j <= $num_col_1; j++ ))
+		do
+			sum=0
+			line1=$(head -n$i $1 | tail -1)
+			line2=$(head -n$i $2 | tail -1)
+			num=0
+			for z in $line1
+			do
+				val1=$z
+				((num++))
+				if [[ $num -eq $j ]]
+				then
+					num=0
+					break
+				fi
+			done
+			for z in $line2
+			do
+				val2=$z
+				((num++))
+				if [[ $num -eq $j ]]
+				then
+					num=0
+					break
+				fi
+			done
+			array[j]=$(expr $val1 + $val2)
+			index=$(expr $index + 2)
+		done
+		echo -e "${array[@]}" | tr [:blank:] '\t'
+	done
+else
+	echo "Not match matrix" 1>&2
+	exit 1
+fi
+}
+
+#------------------------------------------------------------------------
+#The multiply is calculate MXN and NXQ matrix and check the conditon before
+#calculate them
+
+multiply(){
+tmp2="./tmp"
+num_row_1=$(cat $1 | wc -l)
+num_col_1=$(head -n1 $1 | wc -w)
+num_row_2=$(cat $2 | wc -l)
+num_col_2=$(head -n1 $2 | wc -w)
+if [[ $num_row_2 -eq $num_col_1 ]]
+then
+	num_col=$(head -n1 $2 | wc -w)		#transpose the second to the same formal as first
+	for((i=1; i <= $num_col; i++))
+	do
+		cut -f$i $2 | paste -s >> $tmp2
+	done
+	
+	for (( i=1; i<=$num_row_1; i++ ))
+	do
+		for (( j=1; j<=$num_col_2; j++ ))
+		do
+			index=1
+			sum=0
+			for (( z=1; z<=$num_col_1; z++ ))
+			do
+				mul=0
+				var1=$(head -n$i $1 | tail -1 | cut -f $z)
+				var2=$(head -n$j $tmp2 | tail -1 | cut -f $z)
+				mul=$(( $var1*$var2 ))
+				sum=$(expr $sum + $mul)
+				index=$(expr $index + 2)
+			done
+			if [[ $j -ne $num_col_2 ]]
+			then
+				echo -ne "$sum\t"
+			else
+				echo -e "$sum"
+			fi
+		done
+	done
+else
+	echo 1>&2
+	exit 1
+fi
+}
+
+#------------------------------------------------------------------------
+#1. Run the program and call the function
+$1 "${@:2}"
+
+#------------------------------------------------------------------------
+#2. Delete the no temp files
+rm -f "./tmp$$"
+rm -f "./output"
+rm -f "./tmp"
+
+
+
+
