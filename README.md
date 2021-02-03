@@ -1,2 +1,3 @@
-# 344-1-Building-Rooms
-Assignment-1
+# Project of Building-Rooms in matrix
+
+Simply implement matrix buildrooms
